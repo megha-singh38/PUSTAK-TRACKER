@@ -1,0 +1,303 @@
+{% extends "index.html" %}
+
+{% block title %}Dashboard - Pustak Tracker{% endblock %}
+
+{% block content %}
+<!-- Quick Check-in/Check-out Section -->
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow-lg border-start-primary h-100 py-3 bg-light">
+            <div class="card-body">
+                <h5 class="card-title text-primary fw-bold">Quick Check-in/Check-out Action</h5>
+                <p class="text-muted small">Use camera-based scanning or manual entry for fast transactions.</p>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-lg" placeholder="Scan or enter Book ID / User ID (e.g., BOOK101 or 2318236)" id="quick-scan-input">
+                    <button class="btn btn-primary btn-lg" type="button" onclick="processScan()">Execute Transaction</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Books Checked Out</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="kpi-checked-out">{{ stats.total_issued if stats else '1,450' }}</div>
+                <span class="badge bg-success small">+5% vs. Last Month</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Overdue Books (Action Required)</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="kpi-overdue">{{ stats.overdue_count if stats else '45' }}</div>
+                <span class="badge bg-danger small">Fines: ₹ 1,500</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Book Inventory</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="kpi-inventory">{{ stats.total_books if stats else '12,890' }}</div>
+                <span class="text-muted small">89% Available</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Active Registered Patrons</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800" id="kpi-patrons">{{ stats.total_users if stats else '4,200' }}</div>
+                <span class="text-muted small">12 New this Week</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-white">
+                <h6 class="m-0 font-weight-bold text-primary">Monthly Circulation Trend (Last 10 Months)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="circulationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-white">
+                <h6 class="m-0 font-weight-bold text-danger">Books Due Today (High Priority)</h6>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush" id="due-today-list">
+                    {% if overdue_books %}
+                        {% for transaction in overdue_books[:3] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ transaction.book.title[:30] }}... (User: **{{ transaction.user.roll_number }}**)
+                            <span class="badge bg-warning text-dark rounded-pill">
+                                {% set days_overdue = (transaction.due_date - transaction.due_date).days %}
+                                {% if days_overdue == 0 %}Due Today
+                                {% elif days_overdue == 1 %}Due Tomorrow
+                                {% else %}Due in {{ days_overdue }} days{% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            DBMS Textbook (User: **2318236**)
+                            <span class="badge bg-warning text-dark rounded-pill">Due in 3 hrs</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            The Great Gatsby (User: **2319107**)
+                            <span class="badge bg-warning text-dark rounded-pill">Due Tomorrow</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Computer Networks (User: **2318123**)
+                            <span class="badge bg-warning text-dark rounded-pill">Due in 2 days</span>
+                        </li>
+                    {% endif %}
+                    <li class="list-group-item text-center bg-light">
+                        <a href="{{ url_for('web.overdue') }}" class="text-primary small fw-bold">View All Due & Overdue Books</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-white">
+                <h6 class="m-0 font-weight-bold text-info">Top 5 Most Borrowed Categories</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+{% if recent_transactions %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0 fw-semibold">Recent Transactions</h5>
+                    <a href="{{ url_for('web.transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Book</th>
+                                <th>User</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions[:5] %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-book me-2 text-primary"></i>
+                                        <span class="fw-medium">{{ transaction.book.title[:40] }}...</span>
+                                    </div>
+                                </td>
+                                <td>{{ transaction.user.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if transaction.return_date else 'primary' }}">
+                                        {{ 'Return' if transaction.return_date else 'Issue' }}
+                                    </span>
+                                </td>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if transaction.status == 'returned' else 'warning' if transaction.status == 'issued' else 'danger' }}">
+                                        {{ transaction.status.title() }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Placeholder data (In a real system, this would come from your Flask/Python backend API)
+const dashboardData = {
+    circulation: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+        issued: [120, 150, 180, 140, 210, 250, 230, 260, 290, 310],
+        returned: [100, 130, 160, 120, 190, 220, 210, 240, 270, 280],
+    },
+    categories: {
+        names: ['Computer Science', 'Fiction', 'Management', 'History', 'Biographies'],
+        counts: [450, 380, 310, 220, 150]
+    }
+};
+
+// 1. Monthly Circulation Trend Chart (Line Chart)
+const ctxCirculation = document.getElementById('circulationChart');
+new Chart(ctxCirculation, {
+    type: 'line',
+    data: {
+        labels: dashboardData.circulation.labels,
+        datasets: [{
+            label: 'Books Issued',
+            data: dashboardData.circulation.issued,
+            borderColor: '#3498db', 
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.3,
+            fill: true
+        },
+        {
+            label: 'Books Returned',
+            data: dashboardData.circulation.returned,
+            borderColor: '#2ecc71', 
+            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { drawBorder: false }
+            },
+            x: {
+                grid: { display: false }
+            }
+        },
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+        }
+    }
+});
+
+// 2. Top 5 Most Borrowed Categories Chart (Horizontal Bar Chart)
+const ctxCategory = document.getElementById('categoryChart');
+new Chart(ctxCategory, {
+    type: 'bar',
+    data: {
+        labels: dashboardData.categories.names,
+        datasets: [{
+            label: 'Borrow Count',
+            data: dashboardData.categories.counts,
+            backgroundColor: [
+                '#3498db', // Blue
+                '#e74c3c', // Red
+                '#f1c40f', // Yellow
+                '#2ecc71', // Green
+                '#9b59b6'  // Purple
+            ],
+            borderWidth: 0 // Remove border for a cleaner look
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y', // Horizontal bars are more readable for categories
+        scales: {
+            x: {
+                beginAtZero: true,
+                grid: { drawBorder: false }
+            },
+            y: {
+                grid: { display: false }
+            }
+        },
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+
+// Function to simulate the quick scan action
+function processScan() {
+    const input = document.getElementById('quick-scan-input').value.trim();
+    if (input) {
+        let action;
+        let details;
+
+        if (input.toUpperCase().startsWith('BOOK')) {
+            action = "Check-out/Check-in Book";
+            details = `Book ID: ${input}`;
+        } else if (!isNaN(input) && input.length === 7) {
+            action = "Patron Inquiry/Transaction";
+            details = `User Roll No.: ${input}`;
+        } else {
+            action = "Unknown Action";
+            details = `Input: ${input}`;
+        }
+        
+        // This is where your actual API call would go (e.g., using fetch in a real Flask app)
+        alert(`SUCCESS: Simulating ${action} for ${details}. \n\nIn your real 'Pustak Tracker' system, this would call your Flask API to update the database.`);
+        document.getElementById('quick-scan-input').value = ''; 
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,253 @@
+{% extends "index.html" %}
+
+{% block title %}Users - Pustak Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-people"></i> Users Management</h1>
+    {% if current_user_role == 'librarian' %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus"></i> Add User
+    </button>
+    {% endif %}
+</div>
+
+<!-- Search -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="GET" class="d-flex">
+            <input type="text" name="search" class="form-control me-2" 
+                   placeholder="Search users..." value="{{ search }}">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-search"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-body">
+        {% if users.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if user.role == 'librarian' else 'secondary' }}">
+                                    {{ user.role.title() }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if user.is_active else 'danger' }}">
+                                    {{ 'Active' if user.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if current_user_role == 'librarian' and user.role == 'user' %}
+                                <form method="POST" action="{{ url_for('web.toggle_user_status', user_id=user.id) }}" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'warning' if user.is_active else 'success' }}">
+                                        <i class="bi bi-{{ 'pause' if user.is_active else 'play' }}"></i>
+                                        {{ 'Deactivate' if user.is_active else 'Activate' }}
+                                    </button>
+                                </form>
+                                {% elif user.role == 'librarian' %}
+                                <span class="text-muted small">Protected</span>
+                                {% else %}
+                                <span class="text-muted small">No actions</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if users.pages > 1 %}
+            <nav aria-label="Users pagination">
+                <ul class="pagination justify-content-center">
+                    {% if users.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.users', page=users.prev_num, search=search) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in users.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != users.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('web.users', page=page_num, search=search) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if users.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.users', page=users.next_num, search=search) }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">No users found</h4>
+                <p class="text-muted">Start by adding your first user to the library.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add User Modal -->
+{% if current_user_role == 'librarian' %}
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('web.add_user') }}" id="addUserForm">
+                <div class="modal-body">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", required=true) }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.name.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control", required=true) }}
+                        {% if form.email.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.email.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control", required=true) }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.password.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.role.label(class="form-label") }}
+                        {{ form.role(class="form-select", required=true) }}
+                        {% if form.role.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.role.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Select the appropriate role for this user</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ form.submit(class="btn btn-primary", id="submitUserBtn") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle add user form submission
+    const addUserForm = document.getElementById('addUserForm');
+    const addUserModal = document.getElementById('addUserModal');
+    const submitBtn = document.getElementById('submitUserBtn');
+    
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', function(e) {
+            // Show loading state
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Adding...';
+            }
+        });
+    }
+    
+    // Reset form when modal is closed
+    if (addUserModal) {
+        addUserModal.addEventListener('hidden.bs.modal', function() {
+            if (addUserForm) {
+                addUserForm.reset();
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Save User';
+            }
+        });
+    }
+    
+    // Check for flash messages and handle modal accordingly
+    const successAlerts = document.querySelectorAll('.alert-success');
+    const errorAlerts = document.querySelectorAll('.alert-danger, .alert-error');
+    
+    // If there are success messages, close the modal
+    if (successAlerts.length > 0 && addUserModal) {
+        const modal = bootstrap.Modal.getInstance(addUserModal);
+        if (modal) {
+            modal.hide();
+        }
+    }
+    
+    // If there are errors and form errors, keep modal open
+    if (errorAlerts.length > 0 && addUserModal) {
+        const formErrors = document.querySelectorAll('#addUserForm .text-danger');
+        if (formErrors.length > 0) {
+            const modal = new bootstrap.Modal(addUserModal);
+            modal.show();
+        }
+    }
+});
+</script>
+{% endblock %}
