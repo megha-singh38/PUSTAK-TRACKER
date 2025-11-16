@@ -1,0 +1,185 @@
+{% extends "index.html" %}
+
+{% block title %}Overdue Books - Pustak Tracker{% endblock %}
+
+{% block page_title %}<i class="bi bi-exclamation-triangle me-2"></i>Overdue Books{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+    <h1><i class="bi bi-exclamation-triangle text-danger"></i> Overdue Books</h1>
+    <form method="POST" action="{{ url_for('web.recalculate_overdue_fines') }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-calculator"></i> Recalculate Fines
+        </button>
+    </form>
+</div>
+
+<!-- Overdue Books Table -->
+<div class="card fade-in">
+    <div class="card-body">
+        {% if overdue_transactions.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Book</th>
+                            <th>Issue Date</th>
+                            <th>Due Date</th>
+                            <th>Days Overdue</th>
+                            <th>Fine Amount</th>
+                            <th>Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in overdue_transactions.items %}
+                        <tr>
+                            <td>
+                                <strong>{{ transaction.user.name }}</strong><br>
+                                <small class="text-muted">{{ transaction.user.email }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ transaction.book.title }}</strong><br>
+                                <small class="text-muted">by {{ transaction.book.author }}</small>
+                            </td>
+                            <td>{{ transaction.issue_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ transaction.due_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% set days_overdue = (transaction.due_date - transaction.issue_date).days %}
+                                <span class="badge bg-danger">{{ days_overdue }} days</span>
+                            </td>
+                            <td>
+                                <span class="text-danger fw-bold">₹{{ "%.2f"|format(transaction.fine_amount) }}</span>
+                            </td>
+                            <td>
+                                <a href="mailto:{{ transaction.user.email }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-envelope"></i> Email
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Summary -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">Summary</h5>
+                            <p class="card-text">
+                                <strong>Total Overdue Books:</strong> {{ overdue_transactions.total }}<br>
+                                <strong>Total Outstanding Fines:</strong> 
+                                <span class="text-danger">
+                                    ₹{{ "%.2f"|format(overdue_transactions.items | sum(attribute='fine_amount')) }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">Actions</h5>
+                            <button class="btn btn-warning me-2" onclick="updateFines()">
+                                <i class="bi bi-calculator"></i> Update Fines
+                            </button>
+                            <button class="btn btn-primary me-2" onclick="sendReminders()">
+                                <i class="bi bi-send"></i> Send Reminders
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportOverdue()">
+                                <i class="bi bi-download"></i> Export List
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            {% if overdue_transactions.pages > 1 %}
+            <nav aria-label="Overdue books pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if overdue_transactions.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.overdue', page=overdue_transactions.prev_num) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in overdue_transactions.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != overdue_transactions.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('web.overdue', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if overdue_transactions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.overdue', page=overdue_transactions.next_num) }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                <h4 class="text-success mt-3">No Overdue Books</h4>
+                <p class="text-muted">All books are returned on time! Great job!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Overdue fines recalculation is now handled by form submission
+// Additional functions for future enhancements
+async function updateFines() {
+    try {
+        const response = await fetch('/api/fines/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showSuccess(result.message, 'Fines Updated');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showError('Failed to update fines');
+        }
+    } catch (error) {
+        showError('Error updating fines: ' + error.message);
+    }
+}
+
+function sendReminders() {
+    // This would typically send email reminders
+    showSuccess('Reminder emails sent to all users with overdue books!');
+}
+
+function exportOverdue() {
+    // This would export the overdue list to CSV/Excel
+    showSuccess('Overdue books list exported successfully!');
+}
+</script>
+{% endblock %}

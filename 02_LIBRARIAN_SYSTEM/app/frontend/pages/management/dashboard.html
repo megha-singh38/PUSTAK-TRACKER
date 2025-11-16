@@ -1,0 +1,454 @@
+{% extends "index.html" %}
+
+{% block title %}Dashboard - Pustak Tracker{% endblock %}
+
+{% block page_title %}<i class="bi bi-speedometer2 me-2"></i>Dashboard{% endblock %}
+
+{% block content %}
+<!-- Transaction Actions -->
+<div class="row mb-4 fade-in">
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-lg border-start-success h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="bi bi-book-fill text-success" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="card-title text-success fw-bold mb-2">Issue Book</h5>
+                <p class="text-muted mb-4">Scan book barcode and assign to user</p>
+                <button class="btn btn-success btn-lg w-100" type="button" onclick="startIssueProcess();">
+                    <i class="bi bi-plus-circle me-2"></i>Issue Book
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-lg border-start-warning h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="bi bi-arrow-return-left text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="card-title text-warning fw-bold mb-2">Return Book</h5>
+                <p class="text-muted mb-4">Scan book barcode to return</p>
+                <button class="btn btn-warning btn-lg w-100" type="button" onclick="startReturnProcess();">
+                    <i class="bi bi-arrow-return-left me-2"></i>Return Book
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4 fade-in">
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-primary shadow h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase">Books Checked Out</div>
+                    <i class="bi bi-book text-primary opacity-50" style="font-size: 2rem;"></i>
+                </div>
+                <div class="h5 mb-2 font-weight-bold text-gray-800" id="kpi-checked-out">{{ stats.total_issued if stats else 0 }}</div>
+                <span class="badge bg-info">Currently Issued</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-danger shadow h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="text-xs font-weight-bold text-danger text-uppercase">Overdue Books</div>
+                    <i class="bi bi-exclamation-triangle text-danger opacity-50" style="font-size: 2rem;"></i>
+                </div>
+                <div class="h5 mb-2 font-weight-bold text-gray-800" id="kpi-overdue">{{ stats.overdue_count if stats else 0 }}</div>
+                <span class="badge bg-danger">Fines: ₹ {{ stats.total_fines if stats else 0 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-info shadow h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="text-xs font-weight-bold text-info text-uppercase">Total Book Inventory</div>
+                    <i class="bi bi-stack text-info opacity-50" style="font-size: 2rem;"></i>
+                </div>
+                <div class="h5 mb-2 font-weight-bold text-gray-800" id="kpi-inventory">{{ stats.total_copies if stats else 0 }}</div>
+                <span class="text-muted small">{{ stats.availability_percentage if stats else 0 }}% Available</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-start-success shadow h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="text-xs font-weight-bold text-success text-uppercase">Active Patrons</div>
+                    <i class="bi bi-people text-success opacity-50" style="font-size: 2rem;"></i>
+                </div>
+                <div class="h5 mb-2 font-weight-bold text-gray-800" id="kpi-patrons">{{ stats.total_users if stats else 0 }}</div>
+                <span class="text-muted small">{{ stats.new_users_this_week if stats else 0 }} New this Week</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 fade-in">
+    <div class="col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-graph-up me-2"></i>Monthly Circulation Trend (Last 10 Months)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="circulationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-danger"><i class="bi bi-clock-history me-2"></i>Books Due Soon (High Priority)</h6>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush" id="due-today-list">
+                    {% if due_soon_books %}
+                        {% for transaction in due_soon_books[:3] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {% if transaction.book.title|length > 30 %}
+                                {{ transaction.book.title[:30] }}...
+                            {% else %}
+                                {{ transaction.book.title }}
+                            {% endif %}
+                            (User: {{ transaction.user.name }})
+                            <span class="badge {% if transaction.status == 'overdue' %}bg-danger{% else %}bg-warning text-dark{% endif %} rounded-pill">
+                                {% set days_diff = (transaction.due_date.date() - now().date()).days %}
+                                {% if days_diff < 0 %}
+                                    {{ -days_diff }} day{% if -days_diff != 1 %}s{% endif %} overdue
+                                {% elif days_diff == 0 %}
+                                    Due Today
+                                {% elif days_diff == 1 %}
+                                    Due Tomorrow
+                                {% else %}
+                                    Due in {{ days_diff }} days
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-center text-muted">
+                            <i class="bi bi-check-circle me-2"></i>No books due soon
+                        </li>
+                    {% endif %}
+                    <li class="list-group-item text-center bg-light">
+                        <a href="{{ url_for('web.overdue') }}" class="text-primary small fw-bold">View All Due & Overdue Books</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-info"><i class="bi bi-bar-chart me-2"></i>Top 5 Most Borrowed Categories</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+{% if recent_transactions %}
+<div class="row mt-4 fade-in">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0 fw-semibold"><i class="bi bi-clock-history me-2"></i>Recent Transactions</h5>
+                    <a href="{{ url_for('web.transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Book</th>
+                                <th>User</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions[:5] %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-book me-2 text-primary"></i>
+                                        <span class="fw-medium">{{ transaction.book.title[:40] }}...</span>
+                                    </div>
+                                </td>
+                                <td>{{ transaction.user.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if transaction.return_date else 'primary' }}">
+                                        {{ 'Return' if transaction.return_date else 'Issue' }}
+                                    </span>
+                                </td>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if transaction.status == 'returned' else 'warning' if transaction.status == 'issued' else 'danger' }}">
+                                        {{ transaction.status.title() }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- Issue Book Modal -->
+<div class="modal fade" id="issueBookModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📚 Issue Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="issue-step-1">
+                    <h6>Step 1: Scan Book Barcode</h6>
+                    <div class="alert alert-info">
+                        <i class="bi bi-phone me-2"></i>
+                        <strong>Open scanner on your phone:</strong><br>
+                        <a href="#" id="issue-scanner-link" target="_blank" class="btn btn-primary btn-sm mt-2">
+                            📱 Open Mobile Scanner
+                        </a>
+                    </div>
+                    <div class="text-center my-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Waiting for scan...</span>
+                        </div>
+                        <p class="mt-2">Waiting for barcode scan...</p>
+                    </div>
+                </div>
+                
+                <div id="issue-step-2" style="display: none;">
+                    <h6>Step 2: Book Information</h6>
+                    <div id="issue-book-info" class="alert alert-success"></div>
+                    
+                    <h6>Step 3: Select User</h6>
+                    <select id="issue-user-select" class="form-select">
+                        <option value="">Select a user...</option>
+                    </select>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-success" onclick="completeIssue()" disabled id="issue-complete-btn">
+                            Complete Issue
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetIssueProcess()">
+                            Scan Another Book
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Book Modal -->
+<div class="modal fade" id="returnBookModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🔄 Return Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="return-step-1">
+                    <h6>Step 1: Scan Book Barcode</h6>
+                    <div class="alert alert-info">
+                        <i class="bi bi-phone me-2"></i>
+                        <strong>Open scanner on your phone:</strong><br>
+                        <a href="#" id="return-scanner-link" target="_blank" class="btn btn-primary btn-sm mt-2">
+                            📱 Open Mobile Scanner
+                        </a>
+                    </div>
+                    <div class="text-center my-3">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Waiting for scan...</span>
+                        </div>
+                        <p class="mt-2">Waiting for barcode scan...</p>
+                    </div>
+                </div>
+                
+                <div id="return-step-2" style="display: none;">
+                    <h6>Book Information</h6>
+                    <div id="return-book-info" class="alert alert-success"></div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-warning btn-lg" onclick="completeReturn()" id="return-complete-btn">
+                            <i class="bi bi-arrow-return-left me-2"></i>Return This Book
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetReturnProcess()">
+                            Scan Another Book
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard_clean.js') }}"></script>
+<script>
+// Chart data from backend
+const chartData = {
+    circulation: {
+        labels: {{ stats.circulation_data | map(attribute='month') | list | tojson if stats else '[]' }},
+        issued: {{ stats.circulation_data | map(attribute='issued') | list | tojson if stats else '[]' }},
+        returned: {{ stats.circulation_data | map(attribute='returned') | list | tojson if stats else '[]' }},
+    },
+    categories: {
+        names: {{ stats.category_stats | map(attribute='name') | list | tojson if stats else '[]' }},
+        counts: {{ stats.category_stats | map(attribute='count') | list | tojson if stats else '[]' }}
+    }
+};
+
+// 1. Monthly Circulation Trend Chart (Line Chart)
+const ctxCirculation = document.getElementById('circulationChart');
+// Destroy existing chart if it exists
+if (window.circulationChart) {
+    window.circulationChart.destroy();
+}
+window.circulationChart = new Chart(ctxCirculation, {
+    type: 'line',
+    data: {
+        labels: chartData.circulation.labels,
+        datasets: [{
+            label: 'Books Issued',
+            data: chartData.circulation.issued,
+            borderColor: '#3498db', 
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.3,
+            fill: true
+        },
+        {
+            label: 'Books Returned',
+            data: chartData.circulation.returned,
+            borderColor: '#2ecc71', 
+            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { drawBorder: false }
+            },
+            x: {
+                grid: { display: false }
+            }
+        },
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+        }
+    }
+});
+
+// 2. Top 5 Most Borrowed Categories Chart (Horizontal Bar Chart)
+const ctxCategory = document.getElementById('categoryChart');
+// Destroy existing chart if it exists
+if (window.categoryChart) {
+    window.categoryChart.destroy();
+}
+window.categoryChart = new Chart(ctxCategory, {
+    type: 'bar',
+    data: {
+        labels: chartData.categories.names,
+        datasets: [{
+            label: 'Borrow Count',
+            data: chartData.categories.counts,
+            backgroundColor: [
+                '#3498db', // Blue
+                '#e74c3c', // Red
+                '#f1c40f', // Yellow
+                '#2ecc71', // Green
+                '#9b59b6'  // Purple
+            ],
+            borderWidth: 0 // Remove border for a cleaner look
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y', // Horizontal bars are more readable for categories
+        scales: {
+            x: {
+                beginAtZero: true,
+                grid: { drawBorder: false }
+            },
+            y: {
+                grid: { display: false }
+            }
+        },
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+
+// Dashboard integration functions - using external dashboard_clean.js
+
+// Test function to verify buttons work
+function testButtons() {
+    console.log('Issue and Return buttons are working!');
+    showInfo('Buttons are working! Check console for details.');
+}
+
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard JavaScript loaded successfully');
+    
+    // Test if functions are accessible
+    if (typeof startIssueProcess === 'function') {
+        console.log('✅ startIssueProcess function is available');
+    } else {
+        console.error('❌ startIssueProcess function not found');
+    }
+    
+    if (typeof startReturnProcess === 'function') {
+        console.log('✅ startReturnProcess function is available');
+    } else {
+        console.error('❌ startReturnProcess function not found');
+    }
+    
+    // Add modal event listeners for better element access
+    const issueModal = document.getElementById('issueBookModal');
+    const returnModal = document.getElementById('returnBookModal');
+    
+    if (issueModal) {
+        issueModal.addEventListener('shown.bs.modal', function() {
+            console.log('Issue modal shown - elements should be accessible');
+        });
+    }
+    
+    if (returnModal) {
+        returnModal.addEventListener('shown.bs.modal', function() {
+            console.log('Return modal shown - elements should be accessible');
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends "index.html" %}
+
+{% block title %}Transactions - Pustak Tracker{% endblock %}
+
+{% block page_title %}<i class="bi bi-arrow-left-right me-2"></i>Transaction Logs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+    <h1><i class="bi bi-arrow-left-right"></i> Transactions</h1>
+    <div>
+        <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#issueBookModal">
+            <i class="bi bi-arrow-up-circle"></i> Issue Book
+        </button>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#returnBookModal">
+            <i class="bi bi-arrow-down-circle"></i> Return Book
+        </button>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="GET" class="d-flex">
+            <select name="status" class="form-select me-2">
+                <option value="">All Status</option>
+                <option value="issued" {{ 'selected' if status_filter == 'issued' }}>Issued</option>
+                <option value="returned" {{ 'selected' if status_filter == 'returned' }}>Returned</option>
+                <option value="overdue" {{ 'selected' if status_filter == 'overdue' }}>Overdue</option>
+            </select>
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card fade-in">
+    <div class="card-body">
+        {% if transactions.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Book</th>
+                            <th>Issue Date</th>
+                            <th>Due Date</th>
+                            <th>Return Date</th>
+                            <th>Fine</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions.items %}
+                        <tr>
+                            <td>{{ transaction.user.name }}</td>
+                            <td>{{ transaction.book.title }}</td>
+                            <td>{{ transaction.issue_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ transaction.due_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ transaction.return_date.strftime('%Y-%m-%d') if transaction.return_date else '-' }}</td>
+                            <td>
+                                {% if transaction.fine_amount > 0 %}
+                                    <span class="text-danger">₹{{ "%.2f"|format(transaction.fine_amount) }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if transaction.status == 'overdue' else 'success' if transaction.status == 'returned' else 'warning' }}">
+                                    {{ transaction.status.title() }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if transactions.pages > 1 %}
+            <nav aria-label="Transactions pagination">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.transactions', page=transactions.prev_num, status=status_filter) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in transactions.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != transactions.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('web.transactions', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('web.transactions', page=transactions.next_num, status=status_filter) }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-arrow-left-right text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">No transactions found</h4>
+                <p class="text-muted">Start by issuing a book to a user.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Issue Book Modal -->
+<div class="modal fade" id="issueBookModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Issue Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('web.issue_transaction') }}">
+                <div class="modal-body">
+                    {{ issue_form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ issue_form.user_id.label(class="form-label") }}
+                        {{ issue_form.user_id(class="form-select") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ issue_form.book_id.label(class="form-label") }}
+                        {{ issue_form.book_id(class="form-select") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ issue_form.due_date.label(class="form-label") }}
+                        {{ issue_form.due_date(class="form-control") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ issue_form.submit(class="btn btn-success") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Book Modal -->
+<div class="modal fade" id="returnBookModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Return Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('web.return_transaction') }}">
+                <div class="modal-body">
+                    {{ return_form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ return_form.transaction_id.label(class="form-label") }}
+                        {{ return_form.transaction_id(class="form-select") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ return_form.submit(class="btn btn-warning") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set default due date to 14 days from now
+document.addEventListener('DOMContentLoaded', function() {
+    const dueDateInput = document.querySelector('input[name="due_date"]');
+    if (dueDateInput) {
+        const today = new Date();
+        const dueDate = new Date(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+        dueDateInput.value = dueDate.toISOString().split('T')[0];
+    }
+});
+</script>
+{% endblock %}

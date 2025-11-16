@@ -1,276 +1,321 @@
 # Pustak Tracker - Library Management System
 
-A comprehensive Flask-based Library Management System with both web interface and REST API support.
+A comprehensive library management system with a Flutter mobile app and Flask backend API.
 
-## 🚀 Features
+## 📋 Table of Contents
 
-### 📚 Core Functionality
-- **Book Management**: Add, edit, delete, and search books
-- **User Management**: Manage library members and librarians
-- **Transaction Management**: Issue and return books with automatic tracking
-- **Fine Calculation**: Automatic fine calculation for overdue books
-- **Category Management**: Organize books by categories
-- **Dashboard**: Real-time statistics and overview
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Setup Instructions](#setup-instructions)
+  - [Backend Setup](#backend-setup)
+  - [Mobile App Setup](#mobile-app-setup)
+- [Running the Application](#running-the-application)
+- [API Endpoints](#api-endpoints)
+- [Database Schema](#database-schema)
+- [Troubleshooting](#troubleshooting)
 
-### 🌐 Web Interface
-- **Responsive Design**: Bootstrap 5 with modern UI
-- **Librarian Dashboard**: Complete management interface
-- **Search & Filter**: Advanced search capabilities
-- **Real-time Updates**: Live statistics and notifications
+## ✨ Features
 
-### 🔌 REST API
-- **JWT Authentication**: Secure API access
-- **CRUD Operations**: Full REST API for all entities
-- **Mobile Ready**: JSON responses for mobile apps
-- **Documentation**: Well-structured API endpoints
+### Mobile App (Flutter)
+- User authentication with JWT tokens
+- Browse available books
+- View borrowed books with due dates
+- Track fines and overdue books
+- View notifications
+- User profile management
+- Modern, responsive UI with Material Design 3
 
+### Backend API (Flask)
+- RESTful API with JWT authentication
+- User management
+- Book catalog management
+- Transaction tracking (issue/return)
+- Fine calculation
+- Notification system
+- SQLite database
 
-## 📋 Requirements
+## 📁 Project Structure
 
-- Python 3.11+
-- MySQL 8.0+
+```
+LIBRARY MANAGEMENT/
+├── library_backend/           # Flask backend API for mobile app
+│   ├── app.py                 # Main Flask application
+│   ├── run.py                 # Server startup script
+│   ├── requirements.txt       # Python dependencies
+│   ├── START_BACKEND.bat      # Windows startup script
+│   └── venv/                  # Python virtual environment
+├── flutter_library_app/       # Flutter mobile application
+│   ├── lib/
+│   │   ├── main.dart          # App entry point
+│   │   ├── app.dart           # Main app widget
+│   │   ├── core/              # Core utilities (config, theme, utils)
+│   │   ├── data/              # Data layer (models, repositories, services)
+│   │   ├── providers/         # State management (Provider)
+│   │   ├── routes/            # Navigation routing
+│   │   ├── screens/           # UI screens
+│   │   └── widgets/           # Reusable widgets
+│   ├── pubspec.yaml           # Flutter dependencies
+│   └── android/               # Android platform files
+├── app/                       # Flask web application (admin panel)
+│   ├── models.py              # Database models
+│   ├── routes/                # Web routes
+│   └── frontend/              # HTML templates
+├── instance/
+│   └── pustak_tracker.db      # SQLite database (main database)
+└── README.md                  # This file
+```
 
-## 🛠️ Installation
+## 🔧 Prerequisites
 
-### Local Development
+### Backend
+- Python 3.8 or higher
+- pip (Python package manager)
 
-1. **Clone the repository**
+### Mobile App
+- Flutter SDK 3.0 or higher
+- Dart 3.0 or higher
+- Android Studio / VS Code with Flutter extensions
+- Android SDK (API 21+)
+- Physical device or emulator
+
+## 🚀 Setup Instructions
+
+### Backend Setup
+
+1. **Navigate to backend directory:**
    ```bash
-   git clone <repository-url>
-   cd pustak-tracker
+   cd library_backend
    ```
 
-2. **Create virtual environment**
+2. **Create virtual environment (recommended):**
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+3. **Activate virtual environment:**
+   - Windows:
+     ```bash
+     venv\Scripts\activate
+     ```
+   - macOS/Linux:
+     ```bash
+     source venv/bin/activate
+     ```
+
+4. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**
+5. **Verify database exists:**
+   - The database file should be at: `../instance/pustak_tracker.db`
+   - If it doesn't exist, the app will create it automatically
+
+### Mobile App Setup
+
+1. **Navigate to mobile app directory:**
    ```bash
-   cp env.example .env
-   # Edit .env with your configuration
+   cd flutter_library_app
    ```
 
-5. **Initialize database**
+2. **Install Flutter dependencies:**
    ```bash
-   python run.py init-db
+   flutter pub get
    ```
 
-6. **Run the application**
+3. **Update API configuration:**
+   - Open `lib/core/config/api_config.dart`
+   - Update `baseUrl` with your backend server IP address:
+     ```dart
+     static const String baseUrl = 'http://YOUR_IP_ADDRESS:5001/api';
+     ```
+   - To find your IP address:
+     - Windows: Run `ipconfig` and look for IPv4 Address
+     - macOS/Linux: Run `ifconfig` or `ip addr`
+   - For Android Emulator: Use `http://10.0.2.2:5001/api`
+   - For Physical Device: Use your computer's IP (e.g., `http://192.168.1.100:5001/api`)
+
+4. **Connect device or start emulator:**
+   - For Android: Start Android emulator or connect physical device
+   - Enable USB debugging on physical device
+
+## ▶️ Running the Application
+
+### Start Backend Server
+
+1. **Navigate to backend directory:**
+   ```bash
+   cd library_backend
+   ```
+
+2. **Activate virtual environment** (if not already active):
+   - Windows: `venv\Scripts\activate`
+   - macOS/Linux: `source venv/bin/activate`
+
+3. **Run the server:**
    ```bash
    python run.py
    ```
+   
+   Or on Windows:
+   ```bash
+   START_BACKEND.bat
+   ```
 
+4. **Server will start on:**
+   - URL: `http://0.0.0.0:5001`
+   - API Base: `http://YOUR_IP:5001/api`
+   - The console will display the exact URLs to use
+   - Default port: **5001** (not 5000)
 
-## 🔑 Default Login
+### Run Mobile App
 
-- **Email**: librarian@pustak.com
-- **Password**: admin123
+1. **Navigate to mobile app directory:**
+   ```bash
+   cd flutter_library_app
+   ```
 
-## 📖 API Documentation
+2. **Run the app:**
+   ```bash
+   flutter run
+   ```
+
+3. **Or use your IDE:**
+   - Android Studio: Click the Run button
+   - VS Code: Press F5 or use Run menu
+
+4. **Build release APK (optional):**
+   ```bash
+   flutter build apk --release
+   ```
+
+## 🔌 API Endpoints
 
 ### Authentication
-```bash
-POST /api/auth/login
-{
-  "email": "librarian@pustak.com",
-  "password": "admin123"
-}
+- `POST /api/auth/login` - User login
+  - Body: `{ "email": "user@example.com", "password": "password" }`
+  - Returns: `{ "success": true, "token": "...", "user": {...} }`
+
+### User Endpoints (Require JWT Token)
+- `GET /api/user/profile` - Get user profile
+- `GET /api/user/borrowed-books` - Get user's borrowed books
+- `GET /api/user/fines` - Get user's fines
+- `GET /api/user/notifications` - Get user's notifications
+- `GET /api/user/dashboard-stats` - Get dashboard statistics
+- `PUT /api/user/notifications/<id>/read` - Mark notification as read
+
+### Book Endpoints (Require JWT Token)
+- `GET /api/books/available` - Get all available books
+- `GET /api/books/search?query=<query>` - Search books
+
+### Health Check
+- `GET /api/health` - Server health check
+
+**Note:** All endpoints except `/api/auth/login` and `/api/health` require JWT token in Authorization header:
+```
+Authorization: Bearer <your_token>
 ```
 
-### Books API
-```bash
-# Get all books
-GET /api/books
+## 🗄️ Database Schema
 
-# Create book
-POST /api/books
-{
-  "title": "Book Title",
-  "author": "Author Name",
-  "category_id": 1,
-  "total_copies": 5
-}
+The main database (`instance/pustak_tracker.db`) contains:
 
-# Update book
-PUT /api/books/{id}
-
-# Delete book
-DELETE /api/books/{id}
-```
-
-### Transactions API
-```bash
-# Issue book
-POST /api/transactions/issue
-{
-  "user_id": 1,
-  "book_id": 1,
-  "due_date": "2024-01-15"
-}
-
-# Return book
-POST /api/transactions/return
-{
-  "transaction_id": 1
-}
-
-# Get overdue books
-GET /api/transactions/overdue
-```
-
-## 🗂️ Project Structure
-
-```
-pustak_tracker/
-├── app/
-│   ├── __init__.py          # Flask app factory
-│   ├── config.py            # Configuration settings
-│   ├── models.py            # SQLAlchemy models
-│   ├── forms.py             # Flask-WTF forms
-│   ├── utils.py             # Utility functions
-│   ├── routes/
-│   │   ├── web_routes.py    # Web interface routes
-│   │   └── api_routes.py    # REST API routes
-│   ├── templates/           # Jinja2 templates
-│   └── static/              # CSS, JS, images
-├── requirements.txt         # Python dependencies
-├── run.py                   # Application entry point
-└── README.md               # This file
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FLASK_ENV` | Flask environment | `development` |
-| `SECRET_KEY` | Flask secret key | Required |
-| `DATABASE_URL` | Database connection string | Required |
-| `FINE_RATE` | Fine per day (₹) | `5` |
-| `JWT_SECRET_KEY` | JWT secret key | Required |
-
-### Database Configuration
-
-The application supports MySQL with the following connection string format:
-```
-mysql+pymysql://username:password@host:port/database_name
-```
-
-## 🚀 Deployment
-
-### Production Deployment
-
-1. **Set production environment**
-   ```bash
-   export FLASK_ENV=production
-   ```
-
-2. **Use production database**
-   ```bash
-   export DATABASE_URL=mysql+pymysql://user:pass@prod-host/pustak_tracker
-   ```
-
-3. **Run with Gunicorn**
-   ```bash
-   pip install gunicorn
-   gunicorn -w 4 -b 0.0.0.0:5000 run:app
-   ```
-
-
-## 🧪 Testing
-
-### Manual Testing Checklist
-
-- [ ] Login/Logout functionality
-- [ ] Add/Edit/Delete books
-- [ ] Add/Edit/Delete users
-- [ ] Issue and return books
-- [ ] Fine calculation
-- [ ] Overdue book tracking
-- [ ] API endpoints
-- [ ] Search functionality
-- [ ] Responsive design
-
-### API Testing
-
-Use tools like Postman or curl to test API endpoints:
-
-```bash
-# Test login
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"librarian@pustak.com","password":"admin123"}'
-
-# Test get books (with JWT token)
-curl -X GET http://localhost:5000/api/books \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-## 🔄 Maintenance
-
-### Daily Tasks
-- Calculate overdue fines: `python run.py calculate-fines`
-- Check system health
-- Monitor database performance
-
-### Weekly Tasks
-- Review overdue books
-- Update book inventory
-- Backup database
-
-### Monthly Tasks
-- Generate reports
-- Update system dependencies
-- Review user accounts
+- **users** - User accounts (id, name, email, password_hash, role)
+- **books** - Book catalog (id, title, author, publisher, isbn, category_id, total_copies, available_copies)
+- **categories** - Book categories (id, name, description)
+- **transactions** - Book transactions (id, user_id, book_id, issue_date, due_date, return_date, status, fine_amount)
+- **reservations** - Book reservations (id, user_id, book_id, status, created_at)
+- **fines** - Fine records (id, user_id, amount, reason, date, status)
+- **notifications** - User notifications (id, user_id, title, body, type, seen, created_at)
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Backend Issues
 
-1. **Database Connection Error**
-   - Check MySQL service is running
-   - Verify connection string in environment variables
-   - Ensure database exists
+1. **Port already in use:**
+   - Change port in `run.py` (line 16) or stop the process using port 5001
 
-2. **Import Errors**
-   - Activate virtual environment
-   - Install all requirements: `pip install -r requirements.txt`
-
-3. **Permission Errors**
+2. **Database errors:**
+   - Ensure `instance/pustak_tracker.db` exists
    - Check file permissions
-   - Ensure proper user access
 
-4. **Port Already in Use**
-   - Change port in run.py or use different port
-   - Kill existing process using the port
+3. **JWT token errors (422 errors):**
+   - This is fixed - tokens now use string identity
+   - If still occurring, restart backend server
+   - Clear app data and login again
 
-## 📝 License
+4. **CORS errors:**
+   - Verify CORS is enabled in `app.py`
+   - Check that API URL in mobile app matches backend URL
 
-This project is licensed under the MIT License.
+### Mobile App Issues
 
-## 🤝 Contributing
+1. **Cannot connect to backend:**
+   - Verify backend is running on port 5001
+   - Check API URL in `api_config.dart` matches backend
+   - Ensure device/emulator can reach backend IP
+   - For Android emulator: Use `http://10.0.2.2:5001/api`
+   - For physical device: Use your computer's IP (e.g., `http://192.168.1.100:5001/api`)
+   - Test backend with: `curl http://YOUR_IP:5001/api/health`
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. **Build errors:**
+   - Run `flutter clean`
+   - Run `flutter pub get`
+   - Delete `build/` folder and rebuild
+   - Check for syntax errors in Dart files
 
-## 📞 Support
+3. **Dependencies issues:**
+   - Run `flutter pub upgrade`
+   - Check `pubspec.yaml` for version conflicts
+   - Ensure Flutter SDK version is compatible
 
-For support and questions:
-- Create an issue in the repository
-- Check the documentation
-- Review the troubleshooting section
+4. **Yellow/Black error lines (Dart errors):**
+   - All debug print statements have been removed
+   - Check for any remaining syntax errors
+   - Run `flutter analyze` to check for issues
+
+### Common Solutions
+
+- **Clear Flutter build cache:**
+  ```bash
+  cd flutter_library_app
+  flutter clean
+  flutter pub get
+  ```
+
+- **Restart backend server:**
+  - Stop the server (Ctrl+C)
+  - Activate virtual environment
+  - Run `python run.py` again
+
+- **Check network connectivity:**
+  - Ping backend server from device/emulator
+  - Verify firewall settings
+  - Check if backend is accessible from mobile device
+
+## 📝 Important Notes
+
+- **Database:** The main database is `instance/pustak_tracker.db` - this is the single source of truth
+- **Backend Port:** Default port is **5001** (configured in `run.py`)
+- **JWT Tokens:** Expire after 7 days, use string identity (Flask-JWT-Extended 4.x requirement)
+- **API Base URL:** Configure in `flutter_library_app/lib/core/config/api_config.dart`
+- **Security:** All passwords are hashed using Werkzeug
+- **Network:** Mobile app requires network connection to backend server
+- **Database Schema:** Uses `transactions` table (not `borrowed_books`) for book loans
+
+## 👥 User Accounts
+
+User accounts are stored in the database. To create a new user:
+- Use the web admin panel at `http://YOUR_IP:5000` (web app)
+- Or use database management tools
+- Users with role 'user' can login to the mobile app
+- Users with role 'librarian' can only access the web admin panel
+
+## 📄 License
+
+This project is part of the Pustak Tracker Library Management System.
 
 ---
 
-**Pustak Tracker** - Making library management simple and efficient! 📚✨
+**For support or issues, please check the troubleshooting section or review the code comments.**

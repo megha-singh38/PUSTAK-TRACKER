@@ -1,0 +1,126 @@
+{% extends "index.html" %}
+
+{% block title %}Categories - Pustak Tracker{% endblock %}
+
+{% block page_title %}<i class="bi bi-tags me-2"></i>Categories{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 fade-in">
+    <h1><i class="bi bi-tags"></i> Categories Management</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-plus-circle"></i> Add Category
+    </button>
+</div>
+
+<!-- Categories Table -->
+<div class="card fade-in">
+    <div class="card-body">
+        {% if categories %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Books Count</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>
+                                <strong>{{ category.name }}</strong>
+                            </td>
+                            <td>{{ category.description or '-' }}</td>
+                            <td>
+                                <span class="badge bg-primary">{{ category.books|length }}</span>
+                            </td>
+                            <td>{{ category.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteCategory({{ category.id }}, {{ category.name|tojson }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-tags text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">No categories found</h4>
+                <p class="text-muted">Start by adding your first category to organize books.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('web.add_category') }}">
+                <div class="modal-body">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Category Modal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the category "<span id="deleteCategoryName"></span>"?</p>
+                <p class="text-danger"><small>This action cannot be undone and will affect all books in this category.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteCategoryForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteCategory(id, name) {
+    document.getElementById('deleteCategoryName').textContent = name;
+    document.getElementById('deleteCategoryForm').action = '/categories/' + id + '/delete';
+    
+    new bootstrap.Modal(document.getElementById('deleteCategoryModal')).show();
+}
+</script>
+{% endblock %}

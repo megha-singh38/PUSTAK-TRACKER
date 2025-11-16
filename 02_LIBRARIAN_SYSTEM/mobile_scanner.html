@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>📚 Pustak Tracker Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        #video {
+            width: 100%;
+            height: 300px;
+            border-radius: 15px;
+            background: #000;
+            object-fit: cover;
+            margin: 15px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 300px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #5c6bc0;
+            margin: 15px 0;
+        }
+        
+        .video-placeholder i {
+            font-size: 60px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(211, 47, 47, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .connection-status {
+            padding: 12px 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .connected {
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            color: #1b5e20;
+            animation: none;
+        }
+        
+        .disconnected {
+            background: linear-gradient(135deg, #ffccbc 0%, #ffab91 100%);
+            color: #bf360c;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            display: none;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .status.success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            display: block;
+            border-left: 4px solid #28a745;
+        }
+        
+        .status.error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            display: block;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .status.info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+            display: block;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .result {
+            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #1e3c72;
+        }
+        
+        .result h3 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .result #result {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .book-info {
+            background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid #00897b;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .book-title {
+            font-weight: 700;
+            color: #00695c;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        
+        .book-author {
+            color: #555;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .book-details {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .book-details strong {
+            color: #00695c;
+        }
+        
+        .action-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        .action-issue {
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            color: #1b5e20;
+        }
+        
+        .action-return {
+            background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+            color: #f57f17;
+        }
+        
+        .action-unavailable {
+            background: linear-gradient(135deg, #ef9a9a 0%, #e57373 100%);
+            color: #b71c1c;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>📚 Pustak Tracker</h1>
+        <p>Mobile Barcode Scanner</p>
+    </div>
+    
+    <div class="container">
+        <!-- Connection Status -->
+        <div id="connection-status" class="connection-status disconnected">
+            <i class="bi bi-wifi-off"></i>
+            <span>Checking connection...</span>
+        </div>
+        
+        <!-- Scanner Card -->
+        <div class="card">
+            <!-- Scanner Controls -->
+            <button id="start" class="btn btn-primary">
+                <i class="bi bi-camera-fill"></i>
+                <span>Start Scanner</span>
+            </button>
+            <button id="stop" class="btn btn-danger" disabled>
+                <i class="bi bi-stop-circle-fill"></i>
+                <span>Stop Scanner</span>
+            </button>
+            
+            <!-- Camera View -->
+            <div id="video-container">
+                <div class="video-placeholder">
+                    <i class="bi bi-qr-code-scan"></i>
+                    <p>Camera will appear here</p>
+                </div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status" class="status"></div>
+        </div>
+        
+        <!-- Scan Results -->
+        <div class="card result">
+            <h3><i class="bi bi-clock-history"></i> Latest Scan</h3>
+            <div id="result">No scan yet</div>
+        </div>
+        
+        <!-- Book Information -->
+        <div id="book-info" style="display: none;"></div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        <p>Pustak Tracker Library Management System</p>
+        <p>Scan book barcodes starting with "BK"</p>
+    </div>
+
+    <script>
+        class LibraryScanner {
+            constructor() {
+                this.isScanning = false;
+                this.stream = null;
+                this.video = null;
+                // Use current host for backend
+                this.backendUrl = window.location.origin; // Same server
+                
+                this.startBtn = document.getElementById('start');
+                this.stopBtn = document.getElementById('stop');
+                this.videoContainer = document.getElementById('video-container');
+                this.resultDiv = document.getElementById('result');
+                this.statusDiv = document.getElementById('status');
+                this.bookInfoDiv = document.getElementById('book-info');
+                this.connectionDiv = document.getElementById('connection-status');
+                
+                this.startBtn.onclick = () => this.start();
+                this.stopBtn.onclick = () => this.stop();
+                
+                // Check backend connection on load
+                this.checkConnection();
+            }
+            
+            async checkConnection() {
+                try {
+                    console.log('Testing connection to:', `${this.backendUrl}/api/test`);
+                    const response = await fetch(`${this.backendUrl}/api/test`);
+                    console.log('Connection response:', response.status);
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Response data:', data);
+                        this.connectionDiv.className = 'connection-status connected';
+                        this.connectionDiv.innerHTML = '<i class="bi bi-wifi"></i><span>Connected to library system</span>';
+                    } else {
+                        throw new Error('Backend not responding');
+                    }
+                } catch (error) {
+                    this.connectionDiv.className = 'connection-status disconnected';
+                    this.connectionDiv.innerHTML = '<i class="bi bi-wifi-off"></i><span>Cannot connect: ' + error.message + '</span>';
+                    console.error('Connection check failed:', error);
+                }
+            }
+            
+            showStatus(msg, type = 'info') {
+                this.statusDiv.textContent = msg;
+                this.statusDiv.className = `status ${type}`;
+                setTimeout(() => this.statusDiv.style.display = 'none', 5000);
+            }
+            
+            async start() {
+                if (this.isScanning) return;
+                
+                try {
+                    this.showStatus('Starting camera...', 'info');
+                    
+                    const constraints = {
+                        video: {
+                            facingMode: 'environment', // Use back camera
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    };
+                    
+                    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    this.video = document.createElement('video');
+                    this.video.setAttribute('playsinline', true);
+                    this.video.setAttribute('autoplay', true);
+                    this.video.style.width = '100%';
+                    this.video.style.height = '300px';
+                    this.video.style.borderRadius = '15px';
+                    this.video.style.objectFit = 'cover';
+                    this.video.id = 'video';
+                    
+                    this.videoContainer.innerHTML = '';
+                    this.videoContainer.appendChild(this.video);
+                    this.video.srcObject = this.stream;
+                    
+                    await this.video.play();
+                    
+                    this.isScanning = true;
+                    this.startBtn.disabled = true;
+                    this.stopBtn.disabled = false;
+                    
+                    this.showStatus('🎬 Scanner active! Point camera at barcode', 'success');
+                    this.initQuagga();
+                    
+                } catch (error) {
+                    this.showStatus('Camera error: ' + error.message, 'error');
+                    console.error('Camera error:', error);
+                }
+            }
+            
+            initQuagga() {
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: this.video,
+                        constraints: {
+                            width: 640,
+                            height: 480,
+                            facingMode: "environment"
+                        }
+                    },
+                    locator: {
+                        patchSize: "medium",
+                        halfSample: true
+                    },
+                    numOfWorkers: 2,
+                    decoder: {
+                        readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
+                    },
+                    locate: true
+                }, (err) => {
+                    if (err) {
+                        this.showStatus('Scanner init failed', 'error');
+                        console.error('Quagga init error:', err);
+                        return;
+                    }
+                    Quagga.start();
+                });
+                
+                Quagga.onDetected((result) => {
+                    const code = result.codeResult.code;
+                    console.log('Barcode detected:', code, 'Format:', result.codeResult.format);
+                    
+                    // Only process codes that look like our format (BK followed by numbers)
+                    if (code.startsWith('BK') && code.length >= 8) {
+                        // Stop scanning to prevent multiple detections
+                        Quagga.stop();
+                        this.isScanning = false;
+                        this.startBtn.disabled = false;
+                        this.stopBtn.disabled = true;
+                        
+                        this.handleScan(code);
+                    } else {
+                        console.log('Ignoring non-library barcode:', code);
+                        this.showStatus('Please scan a library book barcode (starts with BK)', 'error');
+                    }
+                });
+            }
+            
+            async handleScan(code) {
+                this.resultDiv.innerHTML = `<strong>SCANNED:</strong> ${code}<br><small>${new Date().toLocaleString()}</small>`;
+                this.showStatus('Code detected! Processing...', 'info');
+                
+                try {
+                    console.log('Sending scan data:', { code: code, type: 'BARCODE' });
+                    const response = await fetch(`${this.backendUrl}/api/scan`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: code, type: 'BARCODE' })
+                    });
+                    console.log('Scan response status:', response.status);
+                    
+                    const data = await response.json();
+                    
+                    console.log('Scan response:', data);
+                    
+                    if (data.found) {
+                        data.timestamp = Date.now();
+                        await this.updateLatestScan(data);
+                        
+                        this.displayBookInfo(data.book_info, data.transaction_info, data.action);
+                        this.showStatus('✅ Book found! Data sent to PC dashboard.', 'success');
+                    } else {
+                        this.showStatus('❌ ' + (data.message || 'Book not found in system'), 'error');
+                        this.bookInfoDiv.style.display = 'none';
+                    }
+                } catch (error) {
+                    this.showStatus('Error connecting to library system', 'error');
+                }
+            }
+            
+            async updateLatestScan(scanData) {
+                try {
+                    console.log('Updating latest scan with:', scanData);
+                    const response = await fetch(`${this.backendUrl}/api/update-latest-scan`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(scanData)
+                    });
+                    console.log('Update response status:', response.status);
+                    const result = await response.json();
+                    console.log('Update response:', result);
+                } catch (error) {
+                    console.error('Error updating latest scan:', error);
+                }
+            }
+            
+            displayBookInfo(bookInfo, transactionInfo, action) {
+                let actionClass = action === 'issue' ? 'action-issue' : action === 'return' ? 'action-return' : 'action-unavailable';
+                let actionIcon = action === 'issue' ? 'check-circle-fill' : action === 'return' ? 'arrow-return-left' : 'x-circle-fill';
+                
+                let html = `
+                    <div class="card book-info">
+                        <div class="book-title">
+                            <i class="bi bi-book-fill"></i> ${bookInfo.title}
+                        </div>
+                        <div class="book-author">by ${bookInfo.author}</div>
+                        
+                        <div class="book-details">
+                            <p><strong>Barcode:</strong> ${bookInfo.barcode_id}</p>
+                            <p><strong>Available Copies:</strong> ${bookInfo.available_copies} of ${bookInfo.total_copies || bookInfo.available_copies}</p>
+                            <p><strong>Status:</strong> ${bookInfo.is_available ? '✅ Available' : '❌ Not Available'}</p>
+                `;
+                
+                if (transactionInfo) {
+                    html += `
+                            <hr style="margin: 15px 0; border: none; border-top: 1px solid rgba(0,0,0,0.1);">
+                            <p><strong>Currently Issued To:</strong> ${transactionInfo.user_name}</p>
+                            <p><strong>Issue Date:</strong> ${new Date(transactionInfo.issue_date).toLocaleDateString()}</p>
+                            <p><strong>Due Date:</strong> ${new Date(transactionInfo.due_date).toLocaleDateString()}</p>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <span class="action-badge ${actionClass}">
+                                <i class="bi bi-${actionIcon}"></i> ${action.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
+                this.bookInfoDiv.innerHTML = html;
+                this.bookInfoDiv.style.display = 'block';
+            }
+            
+            stop() {
+                this.isScanning = false;
+                
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.stop();
+                }
+                
+                this.videoContainer.innerHTML = '<div class="video-placeholder"><i class="bi bi-qr-code-scan"></i><p>Camera will appear here</p></div>';
+                this.startBtn.disabled = false;
+                this.stopBtn.disabled = true;
+                this.showStatus('Scanner stopped', 'info');
+            }
+        }
+        
+        // Initialize scanner when page loads
+        new LibraryScanner();
+    </script>
+</body>
+</html>
